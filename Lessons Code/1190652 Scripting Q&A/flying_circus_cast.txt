@@ -1,0 +1,1 @@
+A note about the autograded quizzes. You can add new code cells to experiment and test your code. To run the code cell, press the Run button on the top bar. When you are ready to submit your code, remove all code cells you added before pressing the "TEST CODE" button.
