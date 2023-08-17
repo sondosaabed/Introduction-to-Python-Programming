@@ -1,16 +1,39 @@
 #####
-##### Sondos Aabed Explores the Bokeshare Dataset
+##### Sondos Aabed Explores the Bikeshare Dataset
 #####
 
 ### Importing the necessary libraries
 import time
+import traceback # I used this to trace back the error catched
 import pandas as pd
-import numpy as np
+# import numpy as np I didnit actually use np
 
 #### this is the csv files dictionary
 CITY_DATA = { 'chicago': 'chicago.csv',
               'new york city': 'new_york_city.csv',
               'washington': 'washington.csv' }
+
+## in this method i take the user input and handle the entries to make sure they are valid
+def entery_validation(input_message, valid_inputs, invalid_messgae):
+    """
+    Function that verifies the user input and if there was a problem it returns a prompt
+    Args:
+        (str) input_message - the message displayed to ask the user of input
+        (list) valid_inputs - a list of enteries that are valid
+        (str) invalid_messgae - a message to be displayed if the input is invalid
+    Returns:
+        (str) input - returns the input when it's valid
+    """
+    ## while 
+    while True:
+        input_value = str(input("\n"+ input_message +"\n"))
+        input_value = input_value.lower()
+        if input_value not in valid_inputs:
+            print(invalid_messgae)
+            continue
+        else:
+            break
+    return input_value
 
 #### in this method get the filters inputted by the user
 def get_filters():
@@ -25,36 +48,29 @@ def get_filters():
     print('\nHello! Let\'s explore some US bikeshare data!')
     #####
     # In those cases an invalid input is handled by asking the user to try again until it's true input
+    # because this is a redundunt code It was suggested to create anpther method that takes a message and returns the input if valid
     ####
+    
+    """ City input """
+    city_input_message = "Which City would like to explore? All, Chicago, New york city, Or Washington?"
+    city_invalid_message = "Try to enter another city that is either: Chicago, New york city, Or Washington "
+    city_valid_enteries = ('all','new york city', 'chicago', 'washington')
     # get user input for city (chicago, new york city, washington). 
-    while True:
-        city= input("\n Which City would like to explore? All, Chicago, New york city, Or Washington?\n")
-        city=city.lower()
-        if city not in ('all', 'new york city', 'chicago','washington'):
-            print("Try to enter another city that is either: Chicago, New york city, Or Washington ")
-            continue
-        else:
-            break
+    city = entery_validation(city_input_message, city_valid_enteries,city_invalid_message)
 
+    """ Month input """
+    month_input_message = "In which of the months you want to explore? is it (all, january, february, ... , june)"
+    month_invalid_message = "Try to enter the month again, it wasn't a valid month!"
+    month_valid_enteries = ('all','january','february','march','april','may','june','july','august','september','october','november','december')
     # get user input for month (all, january, february, ... , june)
-    while True:
-        month = input("\n In which of the months you want to explore? is it (all, january, february, ... , june)\n")
-        month = month.lower()
-        if month not in ('all','january','february','march','april','may','june','july','august','september','october','november','december'):
-            print("Try to enter the month again, it wasn't a valid month!")
-            continue
-        else:
-            break
+    month = entery_validation(month_input_message, month_valid_enteries, month_invalid_message)
 
+    """ Day input """
+    day_input_messgae = "What about the day you are looking for? is it (all, monday, tuesday, ... sunday)?"
+    day_inavlid_message = "You entered a not valid day, try again"
+    day_valid_enteries = ('sunday','monday','all','tuesday','wednesday','thursday','friday','saturday')
     # get user input for day of week (all, monday, tuesday, ... sunday)
-    while True: 
-        day = input("\n What about the day you are looking for? is it (all, monday, tuesday, ... sunday)?\n")
-        day = day.lower()
-        if day not in ('sunday','monday','all','tuesday','wednesday','thursday','friday','saturday'):
-            print("You entered a not valid day, try again")
-            continue
-        else:
-            break
+    day = entery_validation(day_input_messgae, day_valid_enteries, day_inavlid_message)
 
     print('-'*40)
     return city, month, day
@@ -73,10 +89,10 @@ def load_data(city, month, day):
     """
     # read the csv file using read_csv pandas based on the user input of cit
     # I have decided to add the option all because why not exploring all of them together giving a broader view 
-    if city not in ('all'):
+    if city != 'all':
         df = pd.read_csv(CITY_DATA[city])
     else:
-        # for all dataframes if the user choses all combine them
+        # for all dataframes if the user choses all concate them
         dfs = []
         for city, path in CITY_DATA.items(all):
             dfC = pd.read_csv(path)
@@ -89,13 +105,29 @@ def load_data(city, month, day):
 ## this metohd I created to clean the data 
 ## cleaning the data included handling missing data 
 # also handle the high cardinality of dates
-def clean_data(df):
-    df = handle_dates(df)
+def clean_data(df, city):
+    """
+    Args:
+        (pandas dataframe) df - takes a data frame with missing data probabloy and with not proper datatypes probably
+        (city) df - because in the case of washington some coulmns doesn't exists
+    Returns:
+        (pandas dataframe) df - imputed with unknown and date handled
+    """
+    df = handle_dates(df, city)
     df = handle_missing(df)
     return df
 
 # this method I created to handle the missing data
 def handle_missing(df):
+    # when I have created the method display data I have notived that there
+    # is a missing coulmn name so I searched for it stands for on kaggle
+    # and it makes since that this is the bike ID, I think in this case
+    # the bike ID is irrelvant so I made the decision to drop it 
+    # althought a possible query comes to mind what if there is a frequent bike ID for example
+    # in this project scope it is decided to drop it then
+    # print(df.columns) it is at index 0
+    df.drop(df.columns[0], axis = 1, inplace=True)
+
     # I chose to fill them with Unknown 
     print('We have {} missing enteries'.format(df.isnull().sum().sum()) )
     # fill Nan values using fillna method
@@ -104,13 +136,13 @@ def handle_missing(df):
     return df
 
 ## this method I created to handle teh dates
-def handle_dates(df):
+def handle_dates(df, city):
     """
     Handle the dates as their datatypes using to_datetime pandas
     """
+    # convert to the proper data type 
     df['Start Time'] = pd.to_datetime(df['Start Time'])
     df['End Time'] = pd.to_datetime(df['End Time'])
-    df['Birth Year'] = pd.to_datetime(df['Birth Year'])
 
     ## this coulmn has high cardinality so I better create new coulmns that I can filter by
     # Like the day of the week and the month and the year and the time
@@ -124,17 +156,42 @@ def handle_dates(df):
     df['end_year'] = df['End Time'].dt.strftime('%Y')
     df['end_time'] = df['End Time'].dt.strftime('%X')
     
-    # we have also the coulmn of Birth year 
-    # df['Birth Year'] = pd.to_datetime(df['Birth Year'], format='%Y')
-    # this is not working for users stats 
-    # I have decided to handle this one as integer to get the min and max values
-    df['Birth Year'] = pd.to_numeric(df['Birth Year'],errors='coerce' , downcast='integer')
+    if city in ('new york city', 'chicago'):
+        df['Birth Year'] = pd.to_datetime(df['Birth Year'])
+        # we have also the coulmn of Birth year 
+        # df['Birth Year'] = pd.to_datetime(df['Birth Year'], format='%Y')
+        # this is not working for users stats 
+        # I have decided to handle this one as integer to get the min and max values
+        df['Birth Year'] = pd.to_numeric(df['Birth Year'],errors='coerce' , downcast='integer')
 
     # dropped them after I handeld them
     df.drop('Start Time', axis=1, inplace=True) 
     df.drop('End Time', axis=1, inplace=True) 
 
     return df
+
+# In this function I ask the user if they want to see 5 of the rows
+# I use the head method build in by pandas to do that
+def display_data(df):
+    view_data = input('\nWould you like to view 5 rows of individual trip data? Enter yes or no\n').lower()
+    start_locaction = 0
+
+    # I actually will famalrize myself with df.iloc, I like the suggestion, the idea that I went for here that also came to my mind is 
+    # using the head function with its parameter 
+    
+    while view_data == 'yes':
+        # while the usr wish to print print
+        # print(df.head(start_locaction))
+
+        # So I started this solution but It doesn't actually perform this functionality 
+        # it prints from the first 
+        # So I will go for the suggested way hhhhhh
+        
+        #using iloc
+        print(df.iloc[start_locaction:start_locaction+5])
+        # change the start location of the head print
+        start_locaction=start_locaction +5
+        view_data = input("Do you want to proceed showing the next 5 rows?\n").lower()
 
 # this method get the time travel frequent times
 # to get that I used the mode built-in method
@@ -198,7 +255,7 @@ def trip_duration_stats(df):
 
 # In this method I get some statics about the users
 # Using 
-def user_stats(df):
+def user_stats(df, city):
     """Displays statistics on bikeshare users."""
 
     print('\nCalculating User Stats...\n')
@@ -208,51 +265,68 @@ def user_stats(df):
     print('In this city, we have diffrent types of users as follows: ')
     print(df['User Type'].value_counts())
 
-    # counts users based on gender
-    print('The total count of each gender is as follow: ')
-    print('Females:', df['Gender'].value_counts().get("Female", 0))
-    print('Males:', df['Gender'].value_counts().get("Male", 0))
-    print('Unknown:', df['Gender'].value_counts().get("Unknown", 0))
+    # this condition because the washington csv doens't include gender and year birth coulmns
+    if city in ('new york city', 'chicago'):
+        # counts users based on gender
+        print('The total count of each gender is as follow: ')
+        print('Females:', df['Gender'].value_counts().get("Female", 0))
+        print('Males:', df['Gender'].value_counts().get("Male", 0))
+        print('Unknown:', df['Gender'].value_counts().get("Unknown", 0))
 
-    # So because I don't want to include the unknown value of these I will use a filter on the dataset 
-    #  earliest year of birth 
-    print('The earliest year of birth is: ', df['Birth Year'].min())
+        # So because I don't want to include the unknown value of these I will use a filter on the dataset 
+        #  earliest year of birth 
+        print('The earliest year of birth is: ', df['Birth Year'].min())
 
-    # Something doesn't add up here because it first displays to me the (unknown) so because I used it to fill the missing data
-    # I am thinking to impute the missing birth year with the mode of it 
-    # but this will effect the time since I already imputed why impute twice
-    # so what can I do ?
+        # Something doesn't add up here because it first displays to me the (unknown) so because I used it to fill the missing data
+        # I am thinking to impute the missing birth year with the mode of it 
+        # but this will effect the time since I already imputed why impute twice
+        # so what can I do ?
 
-    #  most recent of birth 
-    print('The most recent year of birth is: ', df['Birth Year'].max())
+        #  most recent of birth 
+        print('The most recent year of birth is: ', df['Birth Year'].max())
 
-    #  most common year of birth
-    print('The most common year of birth is: ', df['Birth Year'].mode()[0])
+        #  most common year of birth
+        print('The most common year of birth is: ', df['Birth Year'].mode()[0])
 
     print("\nThis took %s seconds." % (time.time() - start_time))
     print('-'*40)
 
 def main():
-    # start the program until the user hits no
-    while True:
-        # gets the filters 
-        city, month, day = get_filters()
+    # start the program until the user hits no ot there exists an exception
+    try:
+        while True:
+            # gets the filters 
+            city, month, day = get_filters()
 
-        # load the dataset
-        df = load_data(city, month, day)
+            # load the dataset
+            df = load_data(city, month, day)
 
-        # clean the dataset
-        df= clean_data(df)
+            # clean the dataset
+            # Here I pass the city because in case the city is washington 
+            # coulmns Gender and Birth Year coulmns doesn't exist 
+            df= clean_data(df, city)
 
-        # Display diffrent statics of the dataset
-        time_stats(df)
-        station_stats(df)
-        trip_duration_stats(df)
-        user_stats(df)
+            # ask the user if they want to print the data
+            display_data(df)
 
-        restart = input('\nWould you like to restart? Enter yes or no.\n')
-        if restart.lower() != 'yes':
-            break
+            # Display diffrent statics of the dataset
+            time_stats(df)
+            station_stats(df)
+            trip_duration_stats(df)
+            # Here I pass the city because in case the city is washington 
+            # coulmns Gender and Birth Year coulmns doesn't exist 
+            user_stats(df, city)
+
+            # the user can restart and try diffrent cities if they 
+            # key hit no the program will hault 
+            restart = str(input('\nWould you like to restart? Enter yes or no.\n'))
+            if restart.lower() != 'yes':
+                break
+    # Any exception that occures will be printed and traced 
+    except Exception as e:
+        print("The program encountered an error: ", 
+            type(e).__name__, " : ", e)
+        traceback.print_exc()
 
 ############################
 
